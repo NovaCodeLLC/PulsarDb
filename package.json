@@ -17,6 +17,7 @@
     "express": "~4.15.2",
     "hbs": "~4.0.1",
     "method-override": "^2.3.9",
+    "mongoose": "^4.11.5",
     "morgan": "~1.8.1",
     "serve-favicon": "~2.4.2"
   },
@@ -26,6 +27,8 @@
     "@types/cors": "^2.8.1",
     "@types/errorhandler": "0.0.30",
     "@types/method-override": "0.0.29",
+    "@types/mongodb": "^2.2.9",
+    "@types/mongoose": "^4.7.19",
     "@types/morgan": "^1.7.32",
     "grunt": "^1.0.1",
     "grunt-contrib-copy": "^1.0.0",

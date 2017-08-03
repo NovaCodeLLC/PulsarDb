@@ -10,7 +10,10 @@ import * as cors from "cors";
 import errorHandler = require("errorhandler");
 import methodOverride = require("method-override");
 import { IndexRoute } from "./routes/index"
-import {TestRoute} from "./routes/customers";
+import { CustomerRoute } from "./routes/customers";
+import morgan = require("morgan");
+import * as mongoose from "mongoose";
+import {mongo} from "mongoose";
 
 /**
  * The server.
@@ -74,11 +77,11 @@ export class Server {
         this.app.use(express.static(path.join(__dirname, "public")));
 
         //configure pug
-        this.app.set("views", path.join(__dirname, "views"));
-        this.app.set("view engine", "hbs");
+        // this.app.set("views", path.join(__dirname, "views"));
+        // this.app.set("view engine", "hbs");
 
         //use logger middlware
-        this.app.use(logger("dev"));
+        this.app.use(morgan("dev"));
 
         //use json form parser middlware
         this.app.use(bodyParser.json());
@@ -93,6 +96,10 @@ export class Server {
 
         //use override middlware
         this.app.use(methodOverride());
+
+        //connect to mongoose
+        mongoose.connect("localhost:27017/PulsarDb");
+        mongoose.connection.on("error", error => { console.log(error) });
 
         //catch 404 and forward to error handler
         this.app.use(function(err: any, req: express.Request, res: express.Response, next: express.NextFunction) {
@@ -130,7 +137,7 @@ export class Server {
 
         //add your routes
         IndexRoute.create(router);
-        TestRoute.getCustomer(router);
+        CustomerRoute.getCustomer(router);
 
         // //use router middleware
         this.app.use(router);

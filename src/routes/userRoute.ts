@@ -1,10 +1,18 @@
 /**
  * Created by tlesperance on 8/3/17.
  */
-import mongoose = require('mongoose');
 import { User } from '../models/user';
 import { Request, Response, NextFunction, Router } from 'express';
-import {isUndefined} from "util";
+import {isNull, isUndefined} from "util";
+import {Observable} from "rxjs/Observable";
+import "rxjs/add/observable/fromPromise";
+import 'rxjs/add/observable/from';
+import 'rxjs/add/operator/map';
+import 'rxjs/add/operator/mergeMap';
+import 'rxjs/add/operator/mergeAll'
+import 'rxjs/add/operator/bufferCount';
+import { Customer } from "../models/customer";
+import {mergeAll} from "rxjs/operator/mergeAll";
 
 /**
  * @class UserAPI
@@ -31,30 +39,51 @@ export class UserAPI{
         })
     }
 
+    /**
+     * Generates a new User in its corresponding collection.
+     *
+     * @param {e.Request} req
+     * @param {e.Response} res
+     * @param {e.NextFunction} next
+     */
     private createNew(req : Request, res : Response, next : NextFunction){
+
+        //populate the model
+        const user = new User({
+            email : req.body.email,
+            password : req.body.password,
+            customers: []
+        });
+
         //generate necessary constants for error checking and instance creation
-        const user = new User(req.body);
         let error = null;
 
         //check for missing data. Send 400 - malformed request - if field is missing.
-        if(!req.body[this.EMAIL_ID] || !req.body[this.PASS]){
+        if(!req.body.email || !req.body.password){
 
-            if(!req.body[this.EMAIL_ID] && !req.body[this.PASS]) error = 'No email or password provided';
-            else if(!req.body[this.EMAIL_ID] && req.body[this.PASS]) error = 'No email address provided';
+            if(!req.body.email && !req.body.password) error = 'No email or password provided';
+            else if(!req.body.email && req.body.password) error = 'No email address provided';
             else error = 'No password provided';
 
-            res.sendStatus(400).json({
+            res.status(400).json({
                 Title: "Malformed Request",
                 Error: error
             });
         }
 
         //create a new user
-        user.save().then(user => {
-            res.json(user.toObject());
-            next();
-            return;
-        }).catch(next);
+        console.log('[Saving] ...');
+
+        //create observables
+        const userObserv = Observable.fromPromise(user.save());
+
+        //generate response / handle errors.
+        userObserv.subscribe(
+            (user) => { res.status(200).send(user.toObject()); },
+            (error) => {
+                res.status(404).json({ Title : "Item Not Found", Error: error}); },
+            () => {console.log('[Saved] Created new User')}
+        );
     }
 
     /**
@@ -63,6 +92,8 @@ export class UserAPI{
      * @param req {Request} request
      * @param res {Response} response
      * @param next {NextFunction} next
+     *
+     * @return void
      */
     private get(req : Request, res : Response, next : NextFunction){
 
@@ -75,16 +106,20 @@ export class UserAPI{
         }
 
         const email : string = req.params[this.EMAIL_ID];
+        console.log(`[Email Found] ${email}`);
 
-        User.findOne({email : email}).then(user=> {
-            if (user === null) {
-                res.sendStatus(404).json({Title: 'Not Found', Message: "The requested user could not be found"})
+        User.findOne({"email" : `${email}`}).then(user=> {
+            console.log(`[Document] ${user}`)
+            if (isNull(user)) {
+                res.sendStatus(404);
+                return;
             }
 
             //add password / token check here.  Nobody should ever have access without authorized credentials.
 
             res.send(user.toObject());
             next();
+            return;
         }).catch(next);
     }
 
@@ -96,12 +131,29 @@ export class UserAPI{
      * @param next {NextFunction} next
      */
     private put(req : Request, res : Response, next : NextFunction){
+
+        //initialize variables
         let error = null;
+        let email : string = req.body.email;
+        let password : string = req.body.password;
+        let bodyCustomers : Array<Object> = req.body.customers;
+        let customers : Array<Observable<any>> = [];
+        let custIDs : Array<Object> = [];
 
-        if(!req.body[this.EMAIL_ID] || !req.body[this.PASS]){
+        // Check for customers in the request array
+        // Then create customer documents and a promise for each one using the .save() method
+        // Once the promises are created, make them into observables, and store them to the array
+        if(req.body.customers && req.body.customers.length > 0){
+            for(let indexNum in bodyCustomers){
+                customers.push((Observable.from(new Customer(bodyCustomers[indexNum]).save())));
+            }
+        }
 
-            if(!req.body[this.EMAIL_ID] && !req.body[this.PASS]) error = 'No email or password provided';
-            else if(!req.body[this.EMAIL_ID] && req.body[this.PASS]) error = 'No email address provided';
+        //check data integrity
+        if(!email || !password){
+
+            if(!email && !password) error = 'No email or password provided';
+            else if(!email && password) error = 'No email address provided';
             else error = 'No password provided';
 
             res.sendStatus(400).json({
@@ -111,21 +163,40 @@ export class UserAPI{
         }
 
         //Get update fields, create a query object, setup the object that will tell the database what it needs to update.
-        let email : string = req.body[this.EMAIL_ID];
-        let password : string = req.body[this.PASS];
-        const query : Object = {email : req.body[this.EMAIL_ID]};
-        const update : Object = {$set : {email : email, password: password}};
+        const query : Object = {email : email};
 
-        //save changes
-        User.findOneAndUpdate(query, update).then(user => {
+        //Setup the master observable from the array of customer observables
+        const custObs = Observable.from(customers)
+            //saves each new customer entry
+            .flatMap(custObs => { return custObs })
+            //waits for all customer saves to complete and groups their outputs together
+            .bufferCount(customers.length)
+            //iterates over each customer object and creates an array of id numbers
+            .map(custArr => {
+                for(let index in custArr){
+                    custIDs.push(custArr[index]._id);
+                }
+                return custArr
+            })
+            //creates FindOneAndUpdate promise that updates the user object with all of the customer IDs
+            .flatMap((customerIDs) =>{
+                const update : Object = {'$set' : {'email' : email, 'password': password}, '$addToSet' : {'customers' : {'$each': customerIDs}}};
+                const userPromise = User.findOneAndUpdate(query, update,{new: true}).exec();
+                return Observable.fromPromise(userPromise);
+            });
 
-            //check for nonexistent user.
-            if(isUndefined(user)){
-                res.sendStatus(404);
-            }
-
-            //send back confirmation of update.
-            res.status(201).json({ Title: "User information has been update" });
-        }).catch(next);
+        //subscribe to the master observable and profit hard.
+        custObs.subscribe(
+            (user)=> {
+                            //check for nonexistent user.
+                            if(isUndefined(user)){
+                                res.sendStatus(404);
+                            }
+                            //send back confirmation of update.
+                            res.status(201).json({ Title: "User information has been update", User: user });
+                            },
+            (error) =>{ res.status(500).json({ Title: "An Error has occurred", Error: error }) },
+         () =>     { console.log(`[Created Customers]... \n[Updated User with Customer ID References] ...`) }
+        );
     }
 }

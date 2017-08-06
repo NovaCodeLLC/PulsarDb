@@ -12,5 +12,5 @@ export var customerSchema : Schema = new Schema({
     lastName : {type: String, required: true},
     email    : {type: String, required: false},
     phone    : {type: String, required: false},
-    transactions : {type: Schema.Types.ObjectId , ref: 'transactions'},
+    transactions : [{type: Schema.Types.ObjectId , ref: 'Transaction'}],
 });

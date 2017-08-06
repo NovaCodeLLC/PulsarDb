@@ -14,11 +14,13 @@
     "cors": "^2.8.4",
     "debug": "~2.6.3",
     "errorhandler": "^1.5.0",
+    "es6-shim": "^0.35.3",
     "express": "~4.15.2",
     "hbs": "~4.0.1",
     "method-override": "^2.3.9",
     "mongoose": "^4.11.5",
     "morgan": "~1.8.1",
+    "rxjs": "5.1.1",
     "serve-favicon": "~2.4.2"
   },
   "devDependencies": {

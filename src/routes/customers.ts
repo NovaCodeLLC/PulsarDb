@@ -4,6 +4,7 @@
 import mongoose = require('mongoose');
 import { NextFunction, Request, Response, Router } from "express";
 import { User } from "../models/user";
+import { Customer } from "../models/customer";
 
 /**
  *
@@ -19,7 +20,7 @@ export class CustomerRoute {
      *
      * @param {e.Router} router express router instance
      */
-    public static getCustomer(router : Router) {
+    public static create(router : Router) {
         console.log("[customerRoute :: get] Getting cust list");
 
         router.get('/api/customerSchema/:email', (req: Request, res: Response, next: NextFunction) => {
@@ -42,9 +43,10 @@ export class CustomerRoute {
     private createNew(req : Request, res : Response, next : NextFunction){
         const EMAIL: string = 'email';
         const PASS: string = 'password';
-        const CUSTOMERS : string = 'customers';
-        const user = new User(req.body);
+
         let error = null;
+        const user = new User(req.body);
+
 
         //check for missing data
         if(!req.body[EMAIL] || !req.body[PASS]){
@@ -101,6 +103,6 @@ export class CustomerRoute {
 
            res.json(userProfile.customers);
 
-}).catch(next);
-}
+        }).catch(next);
+    }
 }

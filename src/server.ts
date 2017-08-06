@@ -14,6 +14,7 @@ import { CustomerRoute } from "./routes/customers";
 import morgan = require("morgan");
 import * as mongoose from "mongoose";
 import {mongo} from "mongoose";
+import {UserAPI} from "./routes/userRoute";
 
 /**
  * The server.
@@ -97,6 +98,9 @@ export class Server {
         //use override middlware
         this.app.use(methodOverride());
 
+        //override mongoose promises
+        // mongoose.Promise = global.Promise;
+
         //connect to mongoose
         mongoose.connect("localhost:27017/PulsarDb");
         mongoose.connection.on("error", error => { console.log(error) });
@@ -137,7 +141,8 @@ export class Server {
 
         //add your routes
         IndexRoute.create(router);
-        CustomerRoute.getCustomer(router);
+        CustomerRoute.create(router);
+        UserAPI.create(router);
 
         // //use router middleware
         this.app.use(router);

@@ -134,18 +134,14 @@ export class UserAPI{
         //initialize variables
         let email : string = req.body.email;
         let bodyCustomers : Array<Object> = req.body.customers;
-       // let customers : Array<Observable<any>> = [];
         let custIDs : Array<Object> = [];
-        let custArrObs : Observable<any>;
+        let custArr2Obs : Observable<any>;
+
         // Check for customers in the request array
         // Then create customer documents and a promise for each one using the .save() method
         // Once the promises are created, make them into observables, and store them to the array
         if(bodyCustomers && bodyCustomers.length > 0){
-            // for(let indexNum in bodyCustomers){
-            //     customers.push((Observable.from(new Customer(bodyCustomers[indexNum]).save())));
-            // }
-
-            custArrObs = Observable.from(Customer.collection.insertMany(bodyCustomers));
+            custArr2Obs = Observable.from(Customer.collection.insertMany(bodyCustomers));
         }
 
         //check data integrity
@@ -162,21 +158,12 @@ export class UserAPI{
         //Get update fields, create a query object, setup the object that will tell the database what it needs to update.
         const query : Object = {email : email};
 
-        //Setup the master observable from the array of customer observables
-        // const custObs = Observable.from(customers)
-        //     //saves each new customer entry
-        //     .flatMap(custObs => { return custObs })
-        //     //waits for all customer saves to complete and groups their outputs together
-        //     .bufferCount(customers.length)
-            //iterates over each customer object and creates an array of id numbers
-        const custObs = custArrObs
+        const custObs = custArr2Obs
             .map(custArr => {
-                console.log(`custArr`, custArr.ops)
                 for(let index in custArr.ops){
                     console.log(custArr.ops[index], index);
                     custIDs.push(custArr.ops[index]._id);
                 }
-                console.log('custIDArr', custIDs);
                 return custIDs;
             })
             //creates FindOneAndUpdate promise that updates the user object with all of the customer IDs

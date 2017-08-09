@@ -28,7 +28,7 @@ export class CustomerRoute {
         });
 
         router.post('/api/customerSchema/', (req : Request, res : Response, next : NextFunction) =>{
-           new CustomerRoute().createNew(req, res, next);
+           new CustomerRoute().post(req, res, next);
         });
     }
 
@@ -40,19 +40,18 @@ export class CustomerRoute {
      * @param next {NextFunction} next function
      */
 
-    private createNew(req : Request, res : Response, next : NextFunction){
-        const EMAIL: string = 'email';
-        const PASS: string = 'password';
-
+    private post(req : Request, res : Response, next : NextFunction){
+        const email = req.body.email;
+        const pass = req.body.password;
         let error = null;
         const user = new User(req.body);
 
 
         //check for missing data
-        if(!req.body[EMAIL] || !req.body[PASS]){
+        if(!email || !pass){
 
-            if(!req.body[EMAIL] && !req.body[PASS]) error = 'No email or password provided';
-            else if(!req.body[EMAIL] && req.body[PASS]) error = 'No email address provided';
+            if(!email && !pass) error = 'No email or password provided';
+            else if(!email && pass) error = 'No email address provided';
             else error = 'No password provided';
 
             res.sendStatus(400).json({
@@ -61,12 +60,18 @@ export class CustomerRoute {
             });
         }
 
+        const obsCreateUser = new Observable.fromPromise(user.save());
+
         //create a new user
-        user.save().then(user => {
-           res.json(user.toObject());
-           next();
-           return;
-        }).catch(next);
+       obsCreateUser.subscribe(
+           (user) =>{
+                if(user) res.send(201).json({ Title: 'User Created', Obj: user });
+                else res.send(500).json({ Title: 'User not created', Obj: user });
+           },
+           (error) => { res.send(500).json({ Title: "An Error Occurred", Obj: error })
+           },
+           () => { console.log('User flow has finished.') }
+       );
     }
 
     /**
@@ -77,32 +82,25 @@ export class CustomerRoute {
      * @param {NextFunction} next next function
      */
     private list(req: Request, res : Response, next : NextFunction) {
-        const EMAIL_ID : string = "email";
+        const EMAIL_ID : string = req.params.email;
 
         //validate ID parameter exists
-        if(req.params[EMAIL_ID] === undefined){
+        if(EMAIL_ID === undefined){
             res.sendStatus(404);
             next();
             return;
         }
 
         //grab id
-
-        const id: string = req.params[EMAIL_ID];
-        const query: Object = {email: id};
+        const query: Object = {email: EMAIL_ID};
         console.log(`[found param: ID] ${query}`);
 
-        User.findOne(query).populate('Customers').then((userProfile : any) => {
-            //ensure a document is returned
-            console.log(`[userProfile object] ${userProfile}`);
-            if(userProfile === null){
-                res.sendStatus(404);
-                next();
-                return;
-            }
+        const obsCustomerList = new Observable(User.findOne(query).populate('Customers').exec());
 
-           res.json(userProfile.customers);
-
-        }).catch(next);
+        obsCustomerList.subscribe(
+            (customers) => { res.status(200).json({ Title: "Success. Fetched list", Obj: customers }) },
+            (error) =>     { res.status(404).json({ Title: "Error: No customers Found", Error: error})},
+            () =>          { console.log(`[Customer Fetch] Pipeline completed ... `) }
+        );
     }
 }

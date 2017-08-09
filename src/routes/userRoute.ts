@@ -12,7 +12,6 @@ import 'rxjs/add/operator/mergeMap';
 import 'rxjs/add/operator/mergeAll'
 import 'rxjs/add/operator/bufferCount';
 import { Customer } from "../models/customer";
-import {mergeAll} from "rxjs/operator/mergeAll";
 
 /**
  * @class UserAPI
@@ -30,11 +29,11 @@ export class UserAPI{
           new UserAPI().createNew(req, res, next);
         });
 
-        router.get('/api/User/:email', (req : Request, res : Response, next : NextFunction) =>{
+        router.get('/api/User/:email/:searchString', (req : Request, res : Response, next : NextFunction) =>{
            new UserAPI().get(req, res, next);
         });
 
-        router.put('/api/User/:email', (req : Request, res : Response, next : NextFunction) =>{
+        router.put('/api/User/', (req : Request, res : Response, next : NextFunction) =>{
             new UserAPI().put(req,res,next);
         })
     }
@@ -133,28 +132,26 @@ export class UserAPI{
     private put(req : Request, res : Response, next : NextFunction){
 
         //initialize variables
-        let error = null;
         let email : string = req.body.email;
-        let password : string = req.body.password;
         let bodyCustomers : Array<Object> = req.body.customers;
-        let customers : Array<Observable<any>> = [];
+       // let customers : Array<Observable<any>> = [];
         let custIDs : Array<Object> = [];
-
+        let custArrObs : Observable<any>;
         // Check for customers in the request array
         // Then create customer documents and a promise for each one using the .save() method
         // Once the promises are created, make them into observables, and store them to the array
-        if(req.body.customers && req.body.customers.length > 0){
-            for(let indexNum in bodyCustomers){
-                customers.push((Observable.from(new Customer(bodyCustomers[indexNum]).save())));
-            }
+        if(bodyCustomers && bodyCustomers.length > 0){
+            // for(let indexNum in bodyCustomers){
+            //     customers.push((Observable.from(new Customer(bodyCustomers[indexNum]).save())));
+            // }
+
+            custArrObs = Observable.from(Customer.collection.insertMany(bodyCustomers));
         }
 
         //check data integrity
-        if(!email || !password){
+        if(!email){
 
-            if(!email && !password) error = 'No email or password provided';
-            else if(!email && password) error = 'No email address provided';
-            else error = 'No password provided';
+            let error = 'No email provided';
 
             res.sendStatus(400).json({
                 Title: 'Malformed Request',
@@ -166,21 +163,25 @@ export class UserAPI{
         const query : Object = {email : email};
 
         //Setup the master observable from the array of customer observables
-        const custObs = Observable.from(customers)
-            //saves each new customer entry
-            .flatMap(custObs => { return custObs })
-            //waits for all customer saves to complete and groups their outputs together
-            .bufferCount(customers.length)
+        // const custObs = Observable.from(customers)
+        //     //saves each new customer entry
+        //     .flatMap(custObs => { return custObs })
+        //     //waits for all customer saves to complete and groups their outputs together
+        //     .bufferCount(customers.length)
             //iterates over each customer object and creates an array of id numbers
+        const custObs = custArrObs
             .map(custArr => {
-                for(let index in custArr){
-                    custIDs.push(custArr[index]._id);
+                console.log(`custArr`, custArr.ops)
+                for(let index in custArr.ops){
+                    console.log(custArr.ops[index], index);
+                    custIDs.push(custArr.ops[index]._id);
                 }
-                return custArr
+                console.log('custIDArr', custIDs);
+                return custIDs;
             })
             //creates FindOneAndUpdate promise that updates the user object with all of the customer IDs
             .flatMap((customerIDs) =>{
-                const update : Object = {'$set' : {'email' : email, 'password': password}, '$addToSet' : {'customers' : {'$each': customerIDs}}};
+                const update : Object = {'$set' : {'email' : email}, '$addToSet' : {'customers' : {'$each': customerIDs}}};
                 const userPromise = User.findOneAndUpdate(query, update,{new: true}).exec();
                 return Observable.fromPromise(userPromise);
             });

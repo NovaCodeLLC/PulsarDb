@@ -3,7 +3,7 @@
  */
 import { User } from '../models/user';
 import { Request, Response, NextFunction, Router } from 'express';
-import {isNull, isUndefined} from "util";
+import {isNull, isNullOrUndefined, isUndefined} from "util";
 import {Observable} from "rxjs/Observable";
 import "rxjs/add/observable/fromPromise";
 import 'rxjs/add/observable/from';
@@ -12,13 +12,14 @@ import 'rxjs/add/operator/mergeMap';
 import 'rxjs/add/operator/mergeAll'
 import 'rxjs/add/operator/bufferCount';
 import { Customer } from "../models/customer";
+import {CustomerConfigJSON} from "../interfaces/customerConfigJSON";
+import {CustomerClass} from "../classes/customerClass";
 
 /**
  * @class UserAPI
  */
 export class UserAPI{
     private EMAIL_ID : string = 'email';
-    private PASS: string = 'password';
 
     /**
      * Create the api
@@ -36,6 +37,56 @@ export class UserAPI{
         router.put('/api/User/', (req : Request, res : Response, next : NextFunction) =>{
             new UserAPI().put(req,res,next);
         })
+    }
+
+    /**
+     * Updates the customer ID array for the associated user and sends a response from the server
+     *
+     * @static
+     * @param {Object} args a JSON object with all the needed arguments
+     * @param {Request} args.req the active request object
+     * @param {Response} args.res the active response object
+     * @param {array} args.customer the single / array of customer JSON object(s) representing the customer document(s) needed to update the associated user document
+     * @param {bool} args.bool (OPTIONAL) a boolean flag used to specify the type of update to be done on the user object (Default: true, true : Add customer IDs, false: Remove customer IDs)
+     */
+    public static updateCustomerArray(args : CustomerConfigJSON){
+
+        //peel out args to create concise shorthand code.
+        const email = args.req.body.email;
+        let customers: Array<Object>;
+
+        //detect the type of the customer field and convert to array if it is a singular object
+        customers = (Array.isArray(args.customer)) ? args.customer : [args.customer];
+
+        const res = args.res;
+        const bool = isNullOrUndefined(args.bool) ? true : args.bool;
+        const searchQry = {email : email};
+
+        let update = null;
+        let customerIDs = [];
+
+        //iterate over customers and make an array of all the customer IDs.
+        customers.forEach((customer : CustomerClass) => {
+            customerIDs.push(customer._id);
+        });
+
+        //check to determine if we're adding or removing the IDs and switch the query to match the request
+        if (bool) { update = {'$addToSet' : {'customers' : {'$each': customerIDs}}} }
+        else { update = {'$pull' : {'customers' : {'$each': customerIDs}}} }
+
+        //create our observable
+        const promise = User.findOneAndUpdate(searchQry, update, {new: true}).exec();
+        const observable = Observable.fromPromise(promise);
+
+        //make the call to the DB and send the appropriate response from the server
+        observable.subscribe(
+            (user) => {
+                if(bool){ return res.status(201).json({Title: "Customers Created and User updated", Obj: user}) }
+                else { return res.status(200).json({Title: "Customers Removed and User updated", Obj: user}) }
+            },
+            (error) => { return res.status(500).json({Title: "Error", Error: error}) },
+            () => { console.log(`[Updates Completed] Customers were created and User was updated ...`) }
+        );
     }
 
     /**

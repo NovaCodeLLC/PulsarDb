@@ -1,12 +1,14 @@
 /**
  * Created by Thomas Lesperance on 8/1/2017.
  */
-import mongoose = require('mongoose');
 import { NextFunction, Request, Response, Router } from "express";
 import { User } from "../models/user";
 import { Customer } from "../models/customer";
 import { Observable } from 'rxjs/Observable';
 import { CustomerClass } from "../classes/customerClass";
+import "rxjs/add/observable/fromPromise";
+import {UserAPI} from "./userRoute";
+
 /**
  *
  * /route
@@ -111,7 +113,7 @@ export class CustomerRoute {
         const query: Object = {email: EMAIL_ID};
         console.log(`[found param: ID] ${query}`);
 
-        const obsCustomerList = Observable(User.findOne(query).populate('Customers').exec());
+        const obsCustomerList = Observable.fromPromise(User.findOne(query).populate('Customers').exec());
 
         obsCustomerList.subscribe(
             (customers) => { res.status(200).json({ Title: "Success. Fetched list", Obj: customers }) },
@@ -121,16 +123,16 @@ export class CustomerRoute {
     }
 
     private createCustomersFromArray(req : Request, res : Response, next : NextFunction) : Array<CustomerClass>{
-        let custArr : Array<Object> = req.body.documents;
+
+        let custArr : Array<Object> = req.body.customers;
         let firstOrderObsCustomer = Observable.fromPromise(Customer.collection.insertMany(custArr))
                                               .map((mongoObject) => {
 
                                                     let arrayOfCustomers = [];
-
                                                     mongoObject.ops.forEach((custJson) => {
                                                         arrayOfCustomers.push(
                                                             new CustomerClass(
-                                                                custJson.fistName,
+                                                                custJson.firstName,
                                                                 custJson.lastName,
                                                                 custJson.email,
                                                                 custJson.phone,
@@ -138,12 +140,19 @@ export class CustomerRoute {
                                                                 custJson._id
                                                             ));
                                                     });
-
                                                     return arrayOfCustomers;
                                               });
 
         firstOrderObsCustomer.subscribe(
-            (mongoObject) => { return mongoObject.ops }, //ops array is the second argument in the Json with the document data.
+            (mongoObject) => {
+
+                console.log(mongoObject);
+                let args = {
+                    req: req,
+                    res: res,
+                    customer: mongoObject,
+                };
+                UserAPI.updateCustomerArray(args) }, //ops array is the second argument in the Json with the document data.
             (error) => { return error },
 
         );

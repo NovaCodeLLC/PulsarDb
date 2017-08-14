@@ -113,10 +113,10 @@ export class CustomerRoute {
         const query: Object = {email: EMAIL_ID};
         console.log(`[found param: ID] ${query}`);
 
-        const obsCustomerList = Observable.fromPromise(User.findOne(query).populate('Customers').exec());
+        const obsCustomerList = Observable.fromPromise(User.findOne(query).populate('customers').exec());
 
         obsCustomerList.subscribe(
-            (customers) => { res.status(200).json({ Title: "Success. Fetched list", Obj: customers }) },
+            (customers) => { res.status(200).json({ Title: "Success. Fetched list", Obj: customers.get('customers') }) },
             (error) =>     { res.status(404).json({ Title: "Error: No customers Found", Error: error})},
             () =>          { console.log(`[Customer Fetch] Pipeline completed ... `) }
         );

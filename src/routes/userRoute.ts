@@ -30,7 +30,8 @@ export class UserAPI{
           new UserAPI().createNew(req, res, next);
         });
 
-        router.get('/api/User/:email/:searchString', (req : Request, res : Response, next : NextFunction) =>{
+        router.get('/api/User/:email/', (req : Request, res : Response, next : NextFunction) =>{
+            console.log('[Route Found] Triggered: UserAPI.get("/api/User/:email"');
            new UserAPI().get(req, res, next);
         });
 

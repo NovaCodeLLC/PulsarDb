@@ -6,9 +6,8 @@
   "scripts": {
     "dev": "SET NODE_ENV=development && nodemon ./bin/www",
     "grunt": "grunt",
-    "start": "node ./bin/www",
-    "build": "webpack-dev-server",
-    "build:prod": "webpack -p"
+    "node-inspector": "node-inspector",
+    "start": "node --debug ./bin/www"
   },
   "dependencies": {
     "body-parser": "~1.17.1",

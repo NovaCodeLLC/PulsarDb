@@ -51,7 +51,7 @@ export class CustomerRoute {
     }
 
     /**
-     * Creates a new user account
+     * Creates a new customer account
      *
      * @param req {Request} request body
      * @param res {Response} response object
@@ -59,34 +59,37 @@ export class CustomerRoute {
      */
 
     private post(req : Request, res : Response, next : NextFunction){
+
+        //notes: the error occurs because you need to create the transaction document first
+        //generate the transaction and use its ID to creat the customer object
+        //once the customer is created, update the user account.
+
         const email = req.body.email;
         const pass = req.body.password;
         let error = null;
-        const user = new User(req.body);
+        const customer = new Customer(req.body);
 
 
         //check for missing data
-        if(!email || !pass){
+        if(!email){
 
-            if(!email && !pass) error = 'No email or password provided';
-            else if(!email && pass) error = 'No email address provided';
-            else error = 'No password provided';
+            if(!email) error = 'No email provided';
 
-            res.sendStatus(400).json({
+            return res.status(400).json({
                 Title: "Malformed Request",
                 Error: error
             });
         }
 
-        const obsCreateUser = Observable.fromPromise(user.save());
+        const obsCreateUser = Observable.fromPromise(customer.save());
 
         //create a new user
        obsCreateUser.subscribe(
            (user) =>{
-                if(user) res.send(201).json({ Title: 'User Created', Obj: user });
-                else res.send(500).json({ Title: 'User not created', Obj: user });
+                if(user) return res.status(201).json({ Title: 'User Created', Obj: user });
+                else return res.status(500).json({ Title: 'User not created', Obj: user });
            },
-           (error) => { res.send(500).json({ Title: "An Error Occurred", Obj: error })
+           (error) => { return res.status(500).json({ Title: "An Error Occurred", Obj: error })
            },
            () => { console.log('User flow has finished.') }
        );

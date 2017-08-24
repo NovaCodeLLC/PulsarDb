@@ -12,5 +12,5 @@ export interface Transaction {
     appointmentDate? : Date[],
     appointmentTime? : String[],
     photos?   : String[],
-    description? : String
+    description? : String,
 }

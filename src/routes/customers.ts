@@ -183,49 +183,59 @@ export class CustomerRoute {
         const phone     : String = req.body.customer.phone;
 
         //create the necessar payment object, then create a transaction model with it
-        const payment: Object = new PaymentClass(req.body.customer.transaction.payments);
+        const payment: Object = new PaymentClass(
+                                                    req.body.customer.transactions[0].payments[0].amount,
+                                                    req.body.customer.transactions[0].payments[0].transactionDate
+                                                );
         const transaction: transactionModel = new Transaction({
-            price           : req.body.customer.transaction.price,
-            payments        : [JSON.stringify(payment)],
-            balance         : req.body.customer.transaction.balance,
-            appointmentDate : [req.body.customer.transaction.appointmentDate],
-            appointmentTime : [req.body.customer.transaction.appointmentTime],
-            photos          : [req.body.customer.transaction.photos],
-            description     : req.body.customer.transaction.description
+            price           : req.body.customer.transactions[0].price,
+            payments        : [{
+                                amount: req.body.customer.transactions[0].payments[0].amount,
+                                transactionDate: req.body.customer.transactions[0].payments[0].transactionDate
+                               }],
+            balance         : req.body.customer.transactions[0].balance,
+            appointmentDate : [req.body.customer.transactions[0].appointmentDate],
+            appointmentTime : [req.body.customer.transactions[0].appointmentTime],
+            photos          : [req.body.customer.transactions[0].photos],
+            description     : req.body.customer.transactions[0].description
         });
 
-        const transactionObs: Observable<any> = Observable.fromPromise( transaction.save() );
-        const highOrderObs  : Observable<any> = transactionObs.flatMap( ( transactionDoc ) => { return transactionDoc })
-                                                         .map( ( savedTransDoc : CustomerClass ) => { return savedTransDoc._id })
+        console.log(`[Cleared Transaction Observable] ... \n\n`);
+        const highOrderObs  : Observable<any> = Observable.fromPromise( transaction.save() )
+                                                         .map( ( savedTransDoc ) => {
+                                                             console.log(`[Saved Transaction Doc] ... \n\n`, savedTransDoc);
+                                                             console.log(`[ID Value] ... ${savedTransDoc._id.toString()}`);
+                                                             return savedTransDoc._id.toString();
+                                                         })
                                                          .flatMap( ( transID ) => {
-                                                             const customer : customerModel = new Customer({
+                                                             console.log(`[Saved Transaction ID] ... ${transID.toString()}`);
+                                                             let customer : customerModel = new Customer({
                                                                  firstName      : firstName,
                                                                  lastName       : lastName,
                                                                  email          : custEmail,
                                                                  phone          : phone,
-                                                                 transaction    : [transID]
+                                                                 transactions   : [transID.toString()]
                                                              });
 
                                                              return Observable.fromPromise(customer.save());
                                                          })
                                                         .map( ( customerDoc ) => {
-                                                            return customerDoc._id;
+                                                            console.log(`[Saved Customer Doc] ... \n\n`, customerDoc);
+                                                            customerDoc._id.toString();
+                                                            return customerDoc
                                                         });
 
         highOrderObs.subscribe(
-            (customerID) => {
+            (customer) => {
 
-                console.log(customerID);
                 let args = {
                     req: req,
                     res: res,
-                    customer: [customerID],
+                    customer: [customer],
                 };
                 UserAPI.updateCustomerArray(args) }, //ops array is the second argument in the Json with the document data.
             (error) => { return error },
-
+            () => { console.log(`[Saved New Completed Customer Profile] ... `); }
         );
-        return;
-
     }
 }

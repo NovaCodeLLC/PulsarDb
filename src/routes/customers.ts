@@ -123,7 +123,10 @@ export class CustomerRoute {
         const query: Object = {email: EMAIL_ID};
         console.log(`[found param: ID] ${query}`);
 
-        const obsCustomerList = Observable.fromPromise(User.findOne(query).populate('customers').exec());
+        const obsCustomerList = Observable.fromPromise(User.findOne(query).populate({
+            path: 'customers',
+            populate: {path: 'transactions'}
+        }).exec());
 
         obsCustomerList.subscribe(
             (customers) => { res.status(200).json({ Title: "Success. Fetched list", Obj: customers.get('customers') }) },

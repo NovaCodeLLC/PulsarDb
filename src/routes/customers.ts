@@ -11,6 +11,7 @@ import "rxjs/add/observable/fromPromise";
 import {UserAPI} from "./userRoute";
 import {PaymentClass} from "../classes/paymentClass";
 import {transactionModel} from "../models/transaction";
+import * as jwt from "express-jwt";
 
 /**
  *
@@ -26,7 +27,7 @@ export class CustomerRoute {
      *
      * @param {e.Router} router express router instance
      */
-    public static create(router : Router) {
+    public static create(router : Router, jwtAuth : any) {
         console.log("[customerRoute :: get] Getting cust list");
 
         router.get('/api/customerSchema/:email', ( req: Request, res: Response, next: NextFunction ) => {

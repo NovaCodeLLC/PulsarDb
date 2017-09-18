@@ -3,6 +3,7 @@
  */
 import{ NextFunction, Request, Response, Router } from "express";
 import{ BaseRoute } from "./route";
+import * as jwt from "express-jwt";
 
 /**
  *
@@ -29,7 +30,7 @@ export class IndexRoute extends BaseRoute {
      * @static
      * @param {e.Router} router
      */
-    public static create(router : Router){
+    public static create(router : Router, jwtAuth : any){
         //log
         console.log("[IndexRoute::create] Creating index route.");
 

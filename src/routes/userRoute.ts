@@ -14,6 +14,7 @@ import 'rxjs/add/operator/bufferCount';
 import { Customer } from "../models/customer";
 import {CustomerConfigJSON} from "../interfaces/customerConfigJSON";
 import {CustomerClass} from "../classes/customerClass";
+import * as jwt from 'express-jwt';
 
 /**
  * @class UserAPI
@@ -25,7 +26,7 @@ export class UserAPI{
      * Create the api
      * @static
      */
-    public static create(router : Router){
+    public static create(router : Router, jwtAuth : any){
         router.post('/api/User/', (req : Request, res : Response, next : NextFunction) =>{
           new UserAPI().createNew(req, res, next);
         });
@@ -160,7 +161,7 @@ export class UserAPI{
         console.log(`[Email Found] ${email}`);
 
         User.findOne({"email" : `${email}`}).then(user=> {
-            console.log(`[Document] ${user}`)
+            console.log(`[Document] ${user}`);
             if (isNull(user)) {
                 res.sendStatus(404);
                 return;

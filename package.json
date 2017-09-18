@@ -4,7 +4,7 @@
   "private": true,
   "author": "Tom Lesperance",
   "scripts": {
-    "dev": "SET NODE_ENV=development && nodemon ./bin/www",
+    "dev": "SET NODE_ENV=development && nodemon %NODE_DEBUG_OPTION% ./bin/www",
     "grunt": "grunt",
     "node-inspector": "node-inspector",
     "start": "node --debug ./bin/www"
@@ -17,6 +17,7 @@
     "errorhandler": "^1.5.0",
     "es6-shim": "^0.35.3",
     "express": "~4.15.2",
+    "express-jwt-authz": "^1.0.0",
     "hbs": "~4.0.1",
     "method-override": "^2.3.9",
     "mongoose": "^4.11.5",
@@ -29,6 +30,7 @@
     "@types/cookie-parser": "^1.4.0",
     "@types/cors": "^2.8.1",
     "@types/errorhandler": "0.0.30",
+    "@types/express-jwt": "0.0.37",
     "@types/method-override": "0.0.29",
     "@types/mongodb": "^2.2.9",
     "@types/mongoose": "^4.7.19",

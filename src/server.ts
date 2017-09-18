@@ -15,6 +15,10 @@ import morgan = require("morgan");
 import * as mongoose from "mongoose";
 import {mongo} from "mongoose";
 import {UserAPI} from "./routes/userRoute";
+import {jwtCheck} from "./Auth0.config";
+import * as jwt from 'express-jwt';
+
+
 
 /**
  * The server.
@@ -136,13 +140,14 @@ export class Server {
         let router: express.Router;
         router = express.Router();
 
+        const jwtAuth = jwtCheck;
         //use cors middleware
-        router.use(cors());
+        // router.use(cors());
 
         //add your routes
-        IndexRoute.create(router);
-        CustomerRoute.create(router);
-        UserAPI.create(router);
+        IndexRoute.create(router, jwtAuth);
+        CustomerRoute.create(router, jwtAuth);
+        UserAPI.create(router, jwtAuth);
 
         // //use router middleware
         this.app.use(router);

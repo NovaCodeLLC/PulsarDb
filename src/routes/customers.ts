@@ -26,19 +26,20 @@ export class CustomerRoute {
      * sends a customerSchema Json object
      *
      * @param {e.Router} router express router instance
+     * @param jwtAuth Auth0 token for security
      */
     public static create(router : Router, jwtAuth : any) {
-        console.log("[customerRoute :: get] Getting cust list");
+        console.log("[customerRoute :: create] create cust routes ...");
 
         router.get('/api/customerSchema/:email', ( req: Request, res: Response, next: NextFunction ) => {
             new CustomerRoute().list( req, res, next );
         });
 
-        router.post('/api/customerSchema/', ( req : Request, res : Response, next : NextFunction ) =>{
+        router.post('/api/customerSchema/', ( req : Request, res : Response, next : NextFunction ) => {
            new CustomerRoute().createCustomers( req, res, next );
         });
 
-        router.post('/api/customerSchema/fullCustCreate/', ( req: Request, res: Response, next: NextFunction) =>{
+        router.post('/api/customerSchema/fullCustCreate/', ( req: Request, res: Response, next: NextFunction ) => {
            new CustomerRoute().fullCustCreate( req, res, next )
         });
     }

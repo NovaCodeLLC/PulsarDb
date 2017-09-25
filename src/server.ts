@@ -17,6 +17,7 @@ import {mongo} from "mongoose";
 import {UserAPI} from "./routes/userRoute";
 import {jwtCheck} from "./Auth0.config";
 import * as jwt from 'express-jwt';
+import {TransactionAPI} from "./routes/transactionRoute";
 
 
 
@@ -145,9 +146,10 @@ export class Server {
         // router.use(cors());
 
         //add your routes
-        IndexRoute.create(router, jwtAuth);
+        // IndexRoute.create(router, jwtAuth);
         CustomerRoute.create(router, jwtAuth);
         UserAPI.create(router, jwtAuth);
+        TransactionAPI.create(router, jwtAuth);
 
         // //use router middleware
         this.app.use(router);

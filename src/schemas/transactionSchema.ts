@@ -6,8 +6,7 @@ import { Schema } from "mongoose";
 /**
 Transaction schema that will be used to define its respective model
  */
-
-const paymentSchema : Schema = new Schema({
+ const paymentSchema : Schema = new Schema({
     amount: {type: String, required: false},
     transactionDate: {type: String, required: false}
 });

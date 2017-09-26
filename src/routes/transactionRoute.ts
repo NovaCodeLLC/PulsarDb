@@ -39,20 +39,16 @@ export class TransactionAPI {
          * or I'm likely to can your ass faster than you can blink.  Alteration of this code can destroy all the update / delete/ and save
          * features for the appointments and payments.
          */
-        router.patch('/api/Transaction/NewPayment/', ( req: Request, res: Response, next: NextFunction ) => {
-            new TransactionAPI().updatePaymentOrAppointmentData(req, res, next, ARRAY_UPDATE_OPTIONS.Push_update);
+        router.patch('/api/Transaction/NewPayAppoint/', ( req: Request, res: Response, next: NextFunction ) => {
+            new TransactionAPI().updatePaymentOrAppointmentData(req, res, next, ARRAY_UPDATE_OPTIONS.Push);
         });
 
-        router.patch('/api/Transaction/NewAppointment/', ( req: Request, res: Response, next: NextFunction ) => {
-            new TransactionAPI().updatePaymentOrAppointmentData(req, res, next, ARRAY_UPDATE_OPTIONS.Push_update);
+        router.patch('/api/Transaction/RemovePayAppoint/', ( req: Request, res: Response, next: NextFunction ) => {
+           new TransactionAPI().updatePaymentOrAppointmentData(req, res, next, ARRAY_UPDATE_OPTIONS.Pull);
         });
 
-        router.patch('/api/Transaction/RemovePayment/', ( req: Request, res: Response, next: NextFunction ) => {
-           new TransactionAPI().updatePaymentOrAppointmentData(req, res, next, ARRAY_UPDATE_OPTIONS.Pull_update);
-        });
-
-        router.patch('/api/Transaction/RemoveAppointment/', ( req: Request, res: Response, next: NextFunction ) => {
-            new TransactionAPI().updatePaymentOrAppointmentData(req, res, next, ARRAY_UPDATE_OPTIONS.Pull_update);
+        router.patch('/api/Transaction/EditPayAppoint/', ( req: Request, res: Response, next: NextFunction ) => {
+            new TransactionAPI().updatePaymentOrAppointmentData(req, res, next, ARRAY_UPDATE_OPTIONS.Update);
         });
     }
 
@@ -91,26 +87,44 @@ export class TransactionAPI {
      * @param {ARRAY_UPDATE_OPTIONS} updateType : Selects the type of update to perform.
      */
     private updatePaymentOrAppointmentData(req: Request, res: Response, next: NextFunction, updateType: ARRAY_UPDATE_OPTIONS) {
+        //check what data is on the body to determine what fields we will be updating
         const transactionID : any = req.body.transactionID;
         const appointmentCheck = +!isNullOrUndefined(req.body.appointmentTime) && +!isNullOrUndefined(req.body.appointmentDate);
         const paymentCheck = (+!isNullOrUndefined(req.body.payments));
 
+        //create a few objects that will contain our mongo update
         let updateObj : Object;
         let update : Object;
 
-        //check what is in the request to decide what data to cobble together for the update Object that will be sent
+        //if the body is data, this block fills out the update object to handle changes to the appointment Date / Time arrays
         if(appointmentCheck) {
-            updateObj = {
-                appointmentDate: req.body.appointmentDate,
-                appointmentTime: req.body.appointmentTime
-            };
+
+            switch (+updateType){
+                case ARRAY_UPDATE_OPTIONS.Update:
+                    let appointmentDateInd = req.body.appointmentDateInd;
+                    let appointmentTimeInd = req.body.appointmentTimeInd;
+
+                    updateObj = {};
+                    updateObj[`appointmentDate.${appointmentDateInd}`] = req.body.appointmentDate;
+                    updateObj[`appointmentTime.${appointmentTimeInd}`] = req.body.appointmentTime;
+                    break;
+
+                default:
+                    updateObj = {
+                        appointmentDate: req.body.appointmentDate,
+                        appointmentTime: req.body.appointmentTime
+                    };
+                    break;
+            }
         }
 
+        //check if it's payment data in the body.  If there is payment data, this block will populate the updateObj to fit
+        //the expected format.
         if(paymentCheck) {
             switch (+updateType) {
 
                 //Push vs Pull: Form the object based on the type of update.  If pull, delete by object ID.
-                case ARRAY_UPDATE_OPTIONS.Push_update:
+                case ARRAY_UPDATE_OPTIONS.Push:
                     updateObj = {
                         payments: {
                             transactionDate: req.body.payments.transactionDate,
@@ -119,8 +133,19 @@ export class TransactionAPI {
                     };
                     break;
 
-                case ARRAY_UPDATE_OPTIONS.Pull_update:
+                case ARRAY_UPDATE_OPTIONS.Pull:
                     updateObj = { payments: { _id: new mongoose.Types.ObjectId(req.body.payments._id) } };
+                    break;
+
+                case ARRAY_UPDATE_OPTIONS.Update:
+                    let ind = req.body.paymentIndex;
+                    updateObj = {};
+
+                    updateObj[`payments.${ind}`] = {
+                        amount: req.body.payments.amount,
+                        transactionDate: req.body.payments.transactionDate
+                    };
+                    break;
             }
 
         }
@@ -134,13 +159,16 @@ export class TransactionAPI {
 
         //checks the type of update and creates the query object to send
         switch (+updateType){
-            case ARRAY_UPDATE_OPTIONS.Pull_update:
+            case ARRAY_UPDATE_OPTIONS.Pull:
                 update = { $pull: updateObj };
                 break;
 
-            case ARRAY_UPDATE_OPTIONS.Push_update:
+            case ARRAY_UPDATE_OPTIONS.Push:
                 update = { $push: updateObj };
                 break;
+
+            case ARRAY_UPDATE_OPTIONS.Update:
+                update = { $set: updateObj };
         }
 
         //create the observable
@@ -163,17 +191,21 @@ export class TransactionAPI {
                     updateInfo = transaction.payments[transaction.payments.length - 1];
                 }
 
+                //if all good, send 200 code and the updated item
                 if (transaction) res.status(200).json({Title: 'New payment added', Obj: updateInfo});
 
+                //if nothing found, return 500 and whatever object is returned
                 if (!transaction) res.status(500).json({Title: 'Item not Found', Obj: updateInfo});
 
                 next();
                 return;
             },
             (err) => {
+                //errors produce a 400 code and send back the error object
                 return res.status(400).json({Title: 'An error ocurred', Error: err})
             },
             () => {
+                //placemarker code to determine if server is working nicely.  will place these on environment test later.
                 console.log('[Appointment Update] Pipeline complete ...')
             }
         );
@@ -185,10 +217,12 @@ export class TransactionAPI {
  *
  * Options:
  *
- * Pull_update,
- * Push_update
+ * Pull : Remove item from array
+ * Push : Add item to array
+ * Update : Update existing value
  */
 export enum ARRAY_UPDATE_OPTIONS {
-    Pull_update,
-    Push_update,
+    Pull,
+    Push,
+    Update
 }

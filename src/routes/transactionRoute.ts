@@ -7,7 +7,7 @@ import * as mongoose from "mongoose";
 import {Observable} from "rxjs/Observable";
 import "rxjs/add/observable/fromPromise";
 import * as jwt from "express-jwt";
-import {isNullOrUndefined} from "util";
+import {isArray, isNullOrUndefined} from "util";
 
 /**
  * /route
@@ -105,15 +105,42 @@ export class TransactionAPI {
                     let appointmentTimeInd = req.body.appointmentTimeInd;
 
                     updateObj = {};
-                    updateObj[`appointmentDate.${appointmentDateInd}`] = req.body.appointmentDate;
-                    updateObj[`appointmentTime.${appointmentTimeInd}`] = req.body.appointmentTime;
+
+                    if(!isArray(appointmentTimeInd) && !isArray(appointmentDateInd)) {
+                        updateObj[`appointmentDate.${appointmentDateInd}`] = req.body.appointmentDate;
+                        updateObj[`appointmentTime.${appointmentTimeInd}`] = req.body.appointmentTime;
+                    } else if ( isArray(appointmentTimeInd) && isArray(appointmentDateInd) ) {
+                        for( let i = 0; i < req.body.appointmentDate.length; i++) {
+                            updateObj[i] = {
+                                appointmentDate: req.body.appointmentDate[i],
+                                appointmentTime: req.body.appointmentTime[i]
+                            };
+                        }
+                    } else {
+                        res.sendStatus(400);
+                        next();
+                        return;
+                    }
                     break;
 
                 default:
-                    updateObj = {
-                        appointmentDate: req.body.appointmentDate,
-                        appointmentTime: req.body.appointmentTime
-                    };
+                    if(!isArray(req.body.appointmentDate) && !isArray(req.body.appointmentTime)) {
+                        updateObj = {
+                            appointmentDate: req.body.appointmentDate,
+                            appointmentTime: req.body.appointmentTime
+                        };
+                    } else if (isArray(req.body.appointmentDate) && isArray(req.body.appointmentTime)) {
+                        for( let i = 0; i < req.body.appointmentDate.length; i++) {
+                            updateObj[i] = {
+                                appointmentDate: req.body.appointmentDate[i],
+                                appointmentTime: req.body.appointmentTime[i]
+                            };
+                        }
+                    } else {
+                        res.sendStatus(400);
+                        next();
+                        return;
+                    }
                     break;
             }
         }
@@ -125,26 +152,56 @@ export class TransactionAPI {
 
                 //Push vs Pull: Form the object based on the type of update.  If pull, delete by object ID.
                 case ARRAY_UPDATE_OPTIONS.Push:
-                    updateObj = {
-                        payments: {
-                            transactionDate: req.body.payments.transactionDate,
-                            amount: req.body.payments.amount,
+                    //single item vs batch
+                    if(!isArray(req.body.payments)) {
+                        updateObj = {
+                            payments: {
+                                transactionDate: req.body.payments.transactionDate,
+                                amount: req.body.payments.amount,
+                            }
+                        };
+                    } else {
+                        for( let i = 0; i < req.body.payments.length; i++) {
+                            updateObj = {
+                                payments: {
+                                    transactionDate: req.body.payments[i].transactionDate,
+                                    amount: req.body.payments[i].amount,
+                                }
+                            };
                         }
-                    };
+                    }
                     break;
 
                 case ARRAY_UPDATE_OPTIONS.Pull:
-                    updateObj = { payments: { _id: new mongoose.Types.ObjectId(req.body.payments._id) } };
+
+                    //logic for single items vs batch pull
+                    if(!isArray(req.body.payments)) {
+                        updateObj = {payments: {_id: new mongoose.Types.ObjectId(req.body.payments._id)}};
+                    } else {
+                        for( let i = 0; i < req.body.payments.length; i++){
+                            updateObj = {payments: {_id: new mongoose.Types.ObjectId(req.body.payments[i]._id)}};
+                        }
+                    }
                     break;
 
                 case ARRAY_UPDATE_OPTIONS.Update:
                     let ind = req.body.paymentIndex;
                     updateObj = {};
 
-                    updateObj[`payments.${ind}`] = {
-                        amount: req.body.payments.amount,
-                        transactionDate: req.body.payments.transactionDate
-                    };
+                    //logic for single vs batch update
+                    if(!isArray(ind)) {
+                        updateObj[`payments.${ind}`] = {
+                            amount: req.body.payments.amount,
+                            transactionDate: req.body.payments.transactionDate
+                        };
+                    } else {
+                        for( let i = 0; i < ind.length; i++){
+                            updateObj[`payments.${ind[i]}`] = {
+                                amount: req.body.payments[i].amount,
+                                transactionDate: req.body.payments[i].transactionDate
+                            }
+                        }
+                    }
                     break;
             }
 

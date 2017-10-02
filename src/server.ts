@@ -143,7 +143,7 @@ export class Server {
 
         const jwtAuth = jwtCheck;
         //use cors middleware
-        // router.use(cors());
+        router.use(cors());
 
         //add your routes
         // IndexRoute.create(router, jwtAuth);

@@ -2,12 +2,13 @@
  * Created by Thomas Lesperance on 8/4/2017.
  */
 import { Request, Response, NextFunction, Router } from 'express';
-import {Transaction} from "../models/transaction";
+import {Transaction, transactionModel} from "../models/transaction";
 import * as mongoose from "mongoose";
 import {Observable} from "rxjs/Observable";
 import "rxjs/add/observable/fromPromise";
 import * as jwt from "express-jwt";
 import {isArray, isNullOrUndefined} from "util";
+import {TransactionClass} from "../classes/transactionClass";
 
 /**
  * /route
@@ -49,6 +50,10 @@ export class TransactionAPI {
 
         router.patch('/api/Transaction/EditPayAppoint/', ( req: Request, res: Response, next: NextFunction ) => {
             new TransactionAPI().updatePaymentOrAppointmentData(req, res, next, ARRAY_UPDATE_OPTIONS.Update);
+        });
+
+        router.put('/api/Transaction/EditWholeTransaction', ( req: Request, res: Response, next: NextFunction ) => {
+           new TransactionAPI().updateTransactionObject( req, res, next );
         });
     }
 
@@ -156,7 +161,7 @@ export class TransactionAPI {
                     if(!isArray(req.body.payments)) {
                         updateObj = {
                             payments: {
-                                transactionDate: req.body.payments.transactionDate,
+                                transactionDate: new Date(req.body.payments.transactionDate).toISOString(),
                                 amount: req.body.payments.amount,
                             }
                         };
@@ -164,7 +169,7 @@ export class TransactionAPI {
                         for( let i = 0; i < req.body.payments.length; i++) {
                             updateObj = {
                                 payments: {
-                                    transactionDate: req.body.payments[i].transactionDate,
+                                    transactionDate: new Date(req.body.payments[i].transactionDate).toISOString(),
                                     amount: req.body.payments[i].amount,
                                 }
                             };
@@ -192,13 +197,13 @@ export class TransactionAPI {
                     if(!isArray(ind)) {
                         updateObj[`payments.${ind}`] = {
                             amount: req.body.payments.amount,
-                            transactionDate: req.body.payments.transactionDate
+                            transactionDate: new Date(req.body.payments.transactionDate).toISOString()
                         };
                     } else {
                         for( let i = 0; i < ind.length; i++){
                             updateObj[`payments.${ind[i]}`] = {
                                 amount: req.body.payments[i].amount,
-                                transactionDate: req.body.payments[i].transactionDate
+                                transactionDate: new Date(req.body.payments[i].transactionDate).toISOString()
                             }
                         }
                     }
@@ -266,6 +271,47 @@ export class TransactionAPI {
                 console.log('[Appointment Update] Pipeline complete ...')
             }
         );
+    }
+
+    updateTransactionObject( req: Request, res: Response, next: NextFunction ) {
+        //needed queries for finding the transaction object and the update
+        let updateQuery = {
+            price: req.body.price,
+            payments: req.body.payments,
+            balance: req.body.balance,
+            appointmentDate: req.body.appointmentDate,
+            appointmentTime: req.body.appointmentTime,
+            photos: req.body.photos,
+            description: req.body.description,
+        };
+        let searchCriteria = { _id: new mongoose.Types.ObjectId( req.body._id ) };
+
+        //create and observbable from the mongoose promise.  Request the updated object be returned from the DB.
+        let update = Observable.fromPromise(
+            Transaction.findByIdAndUpdate( searchCriteria, updateQuery, {new: true} ).exec()
+        );
+
+        update.subscribe(
+            ( updatedTransaction : any ) => {
+                //if all good, send 200 code and the updated item
+                if (updatedTransaction) res.status(200).json({Title: 'New payment added', Obj: updatedTransaction});
+
+                //if nothing found, return 500 and whatever object is returned
+                if (!updatedTransaction) res.status(500).json({Title: 'Item not Found', Obj: updatedTransaction});
+
+                next();
+                return;
+            },
+            (err) => {
+                //errors produce a 400 code and send back the error object
+                return res.status(400).json({Title: 'An error ocurred', Error: err})
+            },
+            () => {
+                //placemarker code to determine if server is working nicely.  will place these on environment test later.
+                console.log('[Appointment Update] Pipeline complete ...')
+            }
+        );
+
     }
 }
 

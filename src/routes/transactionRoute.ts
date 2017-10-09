@@ -2,13 +2,13 @@
  * Created by Thomas Lesperance on 8/4/2017.
  */
 import { Request, Response, NextFunction, Router } from 'express';
-import {Transaction, transactionModel} from "../models/transaction";
+import { Transaction } from "../models/transaction";
 import * as mongoose from "mongoose";
 import {Observable} from "rxjs/Observable";
 import "rxjs/add/observable/fromPromise";
 import * as jwt from "express-jwt";
 import {isArray, isNullOrUndefined} from "util";
-import {TransactionClass} from "../classes/transactionClass";
+
 
 /**
  * /route
